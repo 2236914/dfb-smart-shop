@@ -54,7 +54,7 @@ export function DfbSummaryCard({ title, total, icon, color = 'primary', sx, ...o
 
       <Box sx={{ minWidth: 0 }}>
         <Typography variant="h4">{total}</Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }} noWrap>
+        <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.3 }}>
           {title}
         </Typography>
       </Box>

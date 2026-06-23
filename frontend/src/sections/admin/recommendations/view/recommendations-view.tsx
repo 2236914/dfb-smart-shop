@@ -16,6 +16,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Autocomplete from '@mui/material/Autocomplete';
 import TableContainer from '@mui/material/TableContainer';
+import LinearProgress from '@mui/material/LinearProgress';
 
 import { useAsync } from 'src/hooks/use-async';
 
@@ -32,7 +33,7 @@ import { Scrollbar } from 'src/components/scrollbar';
 export function RecommendationsView() {
   const { showToast, toast } = useToast();
 
-  const { data } = useAsync(async () => {
+  const { data, loading } = useAsync(async () => {
     const [products, recommendations] = await Promise.all([
       fetchProducts(),
       fetchRecommendations(),
@@ -80,6 +81,7 @@ export function RecommendationsView() {
       </Alert>
 
       <Card>
+        {loading && <LinearProgress />}
         <Scrollbar>
           <TableContainer sx={{ overflow: 'unset' }}>
             <Table sx={{ minWidth: 720 }}>
@@ -109,6 +111,8 @@ export function RecommendationsView() {
                             <Typography variant="subtitle2">{product.name}</Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                               {product.category}
+                              {selected.length > 0 &&
+                                ` · ${selected.length} add-on${selected.length > 1 ? 's' : ''}`}
                             </Typography>
                           </Box>
                         </Box>
