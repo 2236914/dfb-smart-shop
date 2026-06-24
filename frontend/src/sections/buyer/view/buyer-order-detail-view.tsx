@@ -19,8 +19,8 @@ import { useAsync } from 'src/hooks/use-async';
 
 import { fDateTime } from 'src/utils/format-time';
 
-import { fetchOrder, cancelOrder } from 'src/services/db';
 import { fPeso, computeUnitPrice } from 'src/data/pricing';
+import { fetchOrder, cancelOrder, fetchOrderEvents } from 'src/services/db';
 
 import { useToast } from 'src/components/toast';
 import { Iconify } from 'src/components/iconify';
@@ -42,10 +42,15 @@ export function BuyerOrderDetailView() {
   const { addItem } = useCart();
   const { showToast, toast } = useToast();
 
-  const { data: order, loading } = useAsync(
-    () => (id ? fetchOrder(id) : Promise.resolve(null)),
+  const { data, loading } = useAsync(
+    () =>
+      id
+        ? Promise.all([fetchOrder(id), fetchOrderEvents(id)]).then(([o, events]) => ({ o, events }))
+        : Promise.resolve(null),
     [id]
   );
+  const order = data?.o ?? null;
+  const events = data?.events ?? [];
 
   const handleReorder = () => {
     order?.items.forEach((item) =>
@@ -111,7 +116,7 @@ export function BuyerOrderDetailView() {
 
       {/* Status tracker */}
       <Box sx={{ mt: 2 }}>
-        <BuyerOrderTracker order={order} />
+        <BuyerOrderTracker order={order} events={events} />
       </Box>
 
       {/* Status helper */}

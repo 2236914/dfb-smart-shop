@@ -34,6 +34,23 @@ export async function fetchMyOrders(customerId: string): Promise<Order[]> {
   return (data ?? []).map(mapOrder);
 }
 
+export type OrderEvent = { status: OrderStatus; createdAt: string };
+
+// Status history for the point-by-point tracker (oldest first). Best-effort:
+// returns [] if the table isn't there yet so the order page never breaks.
+export async function fetchOrderEvents(orderId: string): Promise<OrderEvent[]> {
+  const { data, error } = await supabase
+    .from('order_status_events')
+    .select('status, created_at')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: true });
+  if (error) return [];
+  return ((data ?? []) as { status: OrderStatus; created_at: string }[]).map((r) => ({
+    status: r.status,
+    createdAt: r.created_at,
+  }));
+}
+
 export async function fetchOrder(id: string): Promise<Order | null> {
   const { data, error } = await supabase
     .from('orders')

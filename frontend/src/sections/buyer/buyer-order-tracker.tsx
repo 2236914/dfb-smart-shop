@@ -1,83 +1,82 @@
+import type { OrderEvent } from 'src/services/db';
 import type { Order, OrderStatus } from 'src/data/types';
 
-import { varAlpha } from 'minimal-shared/utils';
-
-import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Step from '@mui/material/Step';
-import Stepper from '@mui/material/Stepper';
-import StepLabel from '@mui/material/StepLabel';
+import Timeline from '@mui/lab/Timeline';
+import TimelineDot from '@mui/lab/TimelineDot';
 import Typography from '@mui/material/Typography';
+import TimelineContent from '@mui/lab/TimelineContent';
+import TimelineSeparator from '@mui/lab/TimelineSeparator';
+import TimelineConnector from '@mui/lab/TimelineConnector';
+import TimelineItem, { timelineItemClasses } from '@mui/lab/TimelineItem';
 
-import { Iconify } from 'src/components/iconify';
+import { fDateTime } from 'src/utils/format-time';
+
+import { ORDER_STATUS_LABEL, RESERVATION_STATUS_LABEL } from 'src/data/status';
 
 // ----------------------------------------------------------------------
-// B-5/B-6. Order status tracker — a 4-stage timeline of the shop-set status
-// (no courier tracking). Reservations use reservation-flavoured labels.
+// B-5/B-6. Point-by-point order tracker — a vertical timeline of the shop-set
+// status changes (newest on top), each with its timestamp. Driven by the
+// order_status_events history.
 // ----------------------------------------------------------------------
 
-const ORDER_STEPS = ['Placed', 'Confirmed', 'Ready for Pickup', 'Completed'];
-const RESERVATION_STEPS = ['Reserved', 'Confirmed', 'Ready', 'Released'];
+type DotColor = 'grey' | 'primary' | 'success' | 'error';
 
-// Map each status onto a step index in the flow above.
-const STEP_INDEX: Record<OrderStatus, number> = {
-  new: 0,
-  pending: 0,
-  confirmed: 1,
-  ready: 2,
-  completed: 3,
-  cancelled: 0,
-};
-
-export function BuyerOrderTracker({ order }: { order: Order }) {
+export function BuyerOrderTracker({ order, events }: { order: Order; events: OrderEvent[] }) {
   const isReservation = order.type === 'reservation';
-  const steps = isReservation ? RESERVATION_STEPS : ORDER_STEPS;
 
-  if (order.status === 'cancelled') {
-    return (
-      <Card
-        sx={{
-          p: 2.5,
-          mb: 2,
-          gap: 1.5,
-          display: 'flex',
-          alignItems: 'center',
-          bgcolor: (theme) => varAlpha(theme.vars.palette.error.mainChannel, 0.08),
-        }}
-      >
-        <Iconify icon="solar:close-circle-bold" width={28} sx={{ color: 'error.main' }} />
-        <Box>
-          <Typography variant="subtitle2">
-            {isReservation ? 'Reservation cancelled' : 'Order cancelled'}
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            This {isReservation ? 'reservation has expired or was' : 'order was'} cancelled. Contact
-            the shop if this is unexpected.
-          </Typography>
-        </Box>
-      </Card>
-    );
-  }
+  const labelFor = (status: OrderStatus) => {
+    if (status === 'new') return isReservation ? 'Reserved' : 'Order placed';
+    return (isReservation ? RESERVATION_STATUS_LABEL : ORDER_STATUS_LABEL)[status];
+  };
 
-  // When completed, mark every step done; otherwise the current status is active.
-  const activeStep = order.status === 'completed' ? steps.length : STEP_INDEX[order.status];
+  // Newest first; fall back to a single "placed" point if history is empty.
+  const items = (events.length ? [...events] : [{ status: 'new' as OrderStatus, createdAt: order.createdAt }])
+    .slice()
+    .reverse();
 
   return (
     <Card sx={{ p: 2.5, mb: 2 }}>
-      <Typography variant="subtitle2" sx={{ mb: 2.5 }}>
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
         Order Status
       </Typography>
-      <Stepper activeStep={activeStep} alternativeLabel>
-        {steps.map((label) => (
-          <Step key={label}>
-            <StepLabel
-              slotProps={{ label: { sx: { typography: 'caption', mt: 0.5 } } }}
-            >
-              {label}
-            </StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+
+      <Timeline
+        sx={{
+          m: 0,
+          p: 0,
+          [`& .${timelineItemClasses.root}:before`]: { flex: 0, p: 0 },
+        }}
+      >
+        {items.map((event, i) => {
+          const latest = i === 0;
+          const color: DotColor =
+            event.status === 'cancelled'
+              ? 'error'
+              : event.status === 'completed'
+                ? 'success'
+                : latest
+                  ? 'primary'
+                  : 'grey';
+
+          return (
+            <TimelineItem key={`${event.status}-${event.createdAt}`}>
+              <TimelineSeparator>
+                <TimelineDot color={color} variant={latest ? 'filled' : 'outlined'} />
+                {i < items.length - 1 && <TimelineConnector />}
+              </TimelineSeparator>
+              <TimelineContent sx={{ pb: 2.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: latest ? 700 : 500 }}>
+                  {labelFor(event.status)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {fDateTime(event.createdAt)}
+                </Typography>
+              </TimelineContent>
+            </TimelineItem>
+          );
+        })}
+      </Timeline>
     </Card>
   );
 }
