@@ -20,10 +20,11 @@ import { useAsync } from 'src/hooks/use-async';
 import { fDateTime } from 'src/utils/format-time';
 
 import { fPeso, computeUnitPrice } from 'src/data/pricing';
-import { fetchOrder, cancelOrder, fetchOrderEvents } from 'src/services/db';
+import { fetchOrder, cancelOrder, fetchBranches, fetchOrderEvents } from 'src/services/db';
 
 import { useToast } from 'src/components/toast';
 import { Iconify } from 'src/components/iconify';
+import { LocationMap } from 'src/components/location-map';
 import { ConfirmDialog } from 'src/components/confirm-dialog';
 
 import { useCart } from 'src/sections/store/cart-context';
@@ -45,12 +46,15 @@ export function BuyerOrderDetailView() {
   const { data, loading } = useAsync(
     () =>
       id
-        ? Promise.all([fetchOrder(id), fetchOrderEvents(id)]).then(([o, events]) => ({ o, events }))
+        ? Promise.all([fetchOrder(id), fetchOrderEvents(id), fetchBranches()]).then(
+            ([o, events, branches]) => ({ o, events, branches })
+          )
         : Promise.resolve(null),
     [id]
   );
   const order = data?.o ?? null;
   const events = data?.events ?? [];
+  const pickupBranch = (data?.branches ?? []).find((b) => b.isMain) ?? (data?.branches ?? [])[0];
 
   const handleReorder = () => {
     order?.items.forEach((item) =>
@@ -237,6 +241,19 @@ export function BuyerOrderDetailView() {
           </Box>
         )}
       </Card>
+
+      {/* Pickup location map (pickup orders) */}
+      {order.fulfilment === 'pickup' && pickupBranch && (
+        <Card sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Pickup location
+          </Typography>
+          <LocationMap query={pickupBranch.address} height={220} />
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1.5 }}>
+            {pickupBranch.address}
+          </Typography>
+        </Card>
+      )}
 
       {/* Actions */}
       <Stack spacing={1.5}>

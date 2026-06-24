@@ -10,10 +10,11 @@ import Typography from '@mui/material/Typography';
 
 import { useAsync } from 'src/hooks/use-async';
 
-import { fetchSettings } from 'src/services/db';
+import { fetchBranches, fetchSettings } from 'src/services/db';
 
 import { useToast } from 'src/components/toast';
 import { Iconify } from 'src/components/iconify';
+import { LocationMap } from 'src/components/location-map';
 
 // ----------------------------------------------------------------------
 // W-9. Contact Page.
@@ -22,6 +23,7 @@ import { Iconify } from 'src/components/iconify';
 export function StoreContactView() {
   const { showToast, toast } = useToast();
   const { data: settings } = useAsync(fetchSettings, []);
+  const { data: branches } = useAsync(fetchBranches, []);
   const [form, setForm] = useState({ name: '', contact: '', message: '' });
 
   const set = (key: keyof typeof form, value: string) =>
@@ -84,6 +86,39 @@ export function StoreContactView() {
             </Stack>
           </Card>
         </Grid>
+      </Grid>
+
+      {/* Visit us — real map per branch */}
+      <Typography variant="h5" sx={{ mt: 6, mb: 1 }}>
+        Visit Us
+      </Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+        Find our branches on the map below.
+      </Typography>
+      <Grid container spacing={3}>
+        {(branches ?? []).map((branch) => (
+          <Grid key={branch.id} size={{ xs: 12, md: 6 }}>
+            <Card sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                <Typography variant="subtitle1">
+                  {branch.name === 'Main' ? 'Main Branch' : `${branch.name}`}
+                </Typography>
+                {branch.isMain && (
+                  <Iconify icon="solar:star-bold" width={16} sx={{ color: 'warning.main' }} />
+                )}
+              </Box>
+              <LocationMap query={branch.address} height={240} />
+              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1.5 }}>
+                {branch.address}
+              </Typography>
+              {(branch.telephone || branch.mobile) && (
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  {[branch.telephone, branch.mobile].filter(Boolean).join(' · ')}
+                </Typography>
+              )}
+            </Card>
+          </Grid>
+        ))}
       </Grid>
 
       {toast}

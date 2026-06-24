@@ -18,3 +18,32 @@ export async function fetchSettings(): Promise<ShopSettings | null> {
   if (!settingsRes.data) return null;
   return mapSettings(settingsRes.data, branchRes.data ?? undefined);
 }
+
+// ----------------------------------------------------------------------
+// Branches (physical shop locations) — used by the location maps.
+// ----------------------------------------------------------------------
+
+export type ShopBranch = {
+  id: string;
+  name: string;
+  address: string;
+  telephone: string | null;
+  mobile: string | null;
+  isMain: boolean;
+};
+
+export async function fetchBranches(): Promise<ShopBranch[]> {
+  const { data, error } = await supabase
+    .from('branches')
+    .select('*')
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((b) => ({
+    id: b.id,
+    name: b.name,
+    address: b.address,
+    telephone: b.telephone,
+    mobile: b.mobile,
+    isMain: b.is_main,
+  }));
+}
