@@ -201,8 +201,10 @@ export function OrderDetailView() {
                                 variant="rounded"
                                 src={item.image}
                                 alt={item.name}
-                                sx={{ width: 48, height: 48 }}
-                              />
+                                sx={{ width: 56, height: 56, bgcolor: 'background.neutral' }}
+                              >
+                                <Iconify icon="solar:box-bold" width={24} sx={{ color: 'text.disabled' }} />
+                              </Avatar>
                               <Typography variant="subtitle2">{item.name}</Typography>
                             </Box>
                           </TableCell>
@@ -322,11 +324,31 @@ export function OrderDetailView() {
                 <InfoRow icon="solar:map-point-bold" text={order.address} />
               )}
               {order.notes && (
-                <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    Customer notes
-                  </Typography>
-                  <Typography variant="body2">{order.notes}</Typography>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    gap: 1,
+                    bgcolor: 'warning.lighter',
+                  }}
+                >
+                  <Iconify
+                    icon="solar:notes-bold"
+                    width={18}
+                    sx={{ color: 'warning.darker', mt: 0.25, flexShrink: 0 }}
+                  />
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{ color: 'warning.darker', display: 'block', fontWeight: 700 }}
+                    >
+                      Customer notes
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: 'warning.darker' }}>
+                      {order.notes}
+                    </Typography>
+                  </Box>
                 </Box>
               )}
             </Stack>
