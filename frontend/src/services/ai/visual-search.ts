@@ -132,6 +132,7 @@ type Dataset = {
 let knn: KNNClassifier | null = null;
 let knnExamples = 0;
 let datasetCache: Dataset | null = null;
+let trainPerClass: { label: string; count: number }[] = [];
 
 function loadImageEl(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -164,22 +165,27 @@ export async function trainCategoryModel(): Promise<number> {
   // The dataset is hand-curated and clean, so train on every example per
   // category (more examples per class = better separation).
   let learned = 0;
+  const perClass: { label: string; count: number }[] = [];
   for (const [slug, paths] of Object.entries(dataset.train)) {
     const label = dataset.categories[slug];
+    let count = 0;
     for (const path of paths) {
       try {
-        const img = await loadImageEl(path); // eslint-disable-line no-await-in-loop
+        const img = await loadImageEl(path);  
         const embedding = model.infer(img, true) as Tensor;
         classifier.addExample(embedding, label);
         embedding.dispose();
         learned += 1;
+        count += 1;
       } catch {
         /* skip an image that fails to load */
       }
     }
+    perClass.push({ label, count });
   }
   knn = classifier;
   knnExamples = learned;
+  trainPerClass = perClass;
   return learned;
 }
 
@@ -212,42 +218,103 @@ export async function matchProductsByImage(
   return products.filter((p) => p.category === predicted.label);
 }
 
+export type ClassMetric = {
+  label: string;
+  support: number; // actual test photos in this class
+  tp: number;
+  fp: number;
+  fn: number;
+  precision: number;
+  recall: number;
+  f1: number;
+};
+
 export type BenchmarkResult = {
-  overall: number;
+  labels: string[];
+  confusion: number[][]; // confusion[actual][predicted]
+  perClass: ClassMetric[];
   total: number;
   correct: number;
-  perCategory: { label: string; correct: number; total: number }[];
+  accuracy: number;
+  macroPrecision: number;
+  macroRecall: number;
+  macroF1: number;
+  model: {
+    name: string;
+    k: number;
+    embeddingDim: number;
+    trainTotal: number;
+    trainPerClass: { label: string; count: number }[];
+  };
 };
 
 /**
  * Measure real accuracy on the held-out test set (images never used in
- * training): top-1 category accuracy overall and per category.
+ * training). Builds a confusion matrix and derives precision / recall / F1 per
+ * class plus macro-averages and overall top-1 accuracy.
  */
 export async function benchmarkModel(): Promise<BenchmarkResult> {
   await trainCategoryModel();
   const dataset = await loadDataset();
-  const perCategory: { label: string; correct: number; total: number }[] = [];
-  let correct = 0;
-  let total = 0;
-  for (const [slug, paths] of Object.entries(dataset.test)) {
-    const label = dataset.categories[slug];
-    let c = 0;
-    let t = 0;
-    for (const path of paths) {
+  const slugs = Object.keys(dataset.categories);
+  const labels = slugs.map((s) => dataset.categories[s]);
+  const idx = new Map(labels.map((l, i) => [l, i]));
+  const K = labels.length;
+  const confusion = Array.from({ length: K }, () => Array<number>(K).fill(0));
+
+  for (const slug of slugs) {
+    const a = idx.get(dataset.categories[slug]) ?? 0;
+    for (const path of dataset.test[slug] ?? []) {
       try {
         const img = await loadImageEl(path);  
-        const predicted = await predictCategory(img);  
-        t += 1;
-        total += 1;
-        if (predicted && predicted.label === label) {
-          c += 1;
-          correct += 1;
-        }
+        const pred = await predictCategory(img);  
+        const p = pred ? idx.get(pred.label) : undefined;
+        if (p !== undefined) confusion[a][p] += 1;
       } catch {
         /* skip */
       }
     }
-    perCategory.push({ label, correct: c, total: t });
   }
-  return { overall: total ? correct / total : 0, total, correct, perCategory };
+
+  let correct = 0;
+  let total = 0;
+  const perClass: ClassMetric[] = labels.map((label, c) => {
+    const tp = confusion[c][c];
+    let rowSum = 0;
+    let colSum = 0;
+    for (let j = 0; j < K; j += 1) {
+      rowSum += confusion[c][j];
+      colSum += confusion[j][c];
+    }
+    const fn = rowSum - tp;
+    const fp = colSum - tp;
+    const precision = tp + fp > 0 ? tp / (tp + fp) : 0;
+    const recall = tp + fn > 0 ? tp / (tp + fn) : 0;
+    const f1 = precision + recall > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+    correct += tp;
+    total += rowSum;
+    return { label, support: rowSum, tp, fp, fn, precision, recall, f1 };
+  });
+
+  const macro = (sel: (m: ClassMetric) => number) =>
+    perClass.length ? perClass.reduce((sum, m) => sum + sel(m), 0) / perClass.length : 0;
+
+  return {
+    labels,
+    confusion,
+    perClass,
+    total,
+    correct,
+    accuracy: total ? correct / total : 0,
+    macroPrecision: macro((m) => m.precision),
+    macroRecall: macro((m) => m.recall),
+    macroF1: macro((m) => m.f1),
+    model: {
+      name: 'MobileNet (1024-D embedding) + K-Nearest-Neighbors',
+      k: Math.min(5, knnExamples),
+      embeddingDim: 1024,
+      trainTotal: knnExamples,
+      trainPerClass,
+    },
+  };
 }
