@@ -1,4 +1,5 @@
 import type { Product } from 'src/data/types';
+import type { BenchmarkResult } from 'src/services/ai';
 
 import { useState, useCallback } from 'react';
 
@@ -27,7 +28,8 @@ import { DashboardContent } from 'src/layouts/dashboard';
 import {
   isKnnTrained,
   classifyImage,
-  trainOnProducts,
+  benchmarkModel,
+  trainCategoryModel,
   matchProductsByImage,
   matchProductsByLabels,
 } from 'src/services/ai';
@@ -36,10 +38,11 @@ import { Iconify } from 'src/components/iconify';
 import { Scrollbar } from 'src/components/scrollbar';
 
 // ----------------------------------------------------------------------
-// A-x. AI Visual Search — Accuracy Test (Objective 2). Runs the REAL
-// client-side MobileNet pipeline (classify → keyword-bridge → match) over a
-// labelled set of photos and reports top-1 / top-3 category accuracy, so the
-// study has a measured number rather than a claim.
+// AI Visual Search — Accuracy (Objective 2). The model is a KNN classifier
+// trained on MobileNet embeddings of a curated per-category photo set
+// (transfer learning). "Run benchmark" measures real top-1 category accuracy on
+// a HELD-OUT test set (photos never used in training) — overall and per
+// category. A second tool lets you try your own photos.
 // ----------------------------------------------------------------------
 
 type Row = {
@@ -56,9 +59,24 @@ let counter = 0;
 export function AiAccuracyView() {
   const { data } = useAsync(fetchVisibleProducts, []);
   const products = data ?? [];
+
+  const [bench, setBench] = useState<BenchmarkResult | null>(null);
+  const [benching, setBenching] = useState(false);
+  const [trainedCount, setTrainedCount] = useState<number | null>(null);
+
   const [rows, setRows] = useState<Row[]>([]);
   const [running, setRunning] = useState(false);
-  const [trainedCount, setTrainedCount] = useState<number | null>(null);
+
+  const runBenchmark = useCallback(async () => {
+    setBenching(true);
+    try {
+      const n = await trainCategoryModel();
+      setTrainedCount(n);
+      setBench(await benchmarkModel());
+    } finally {
+      setBenching(false);
+    }
+  }, []);
 
   const addFiles = useCallback((files: FileList | null) => {
     if (!files) return;
@@ -74,14 +92,7 @@ export function AiAccuracyView() {
 
   const run = useCallback(async () => {
     setRunning(true);
-    // Transfer-learn on the catalog photos first (once), then test.
-    if (!isKnnTrained()) {
-      const n = await trainOnProducts(products);
-      setTrainedCount(n);
-    } else {
-      setTrainedCount((c) => c ?? 0);
-    }
-    // Sequential — one classify at a time so the shared model isn't hammered.
+    if (!isKnnTrained()) setTrainedCount(await trainCategoryModel());
     for (const row of rows) {
       try {
         const img = new Image();
@@ -110,144 +121,197 @@ export function AiAccuracyView() {
   }, [rows, products]);
 
   const catOf = (id: string) => products.find((p) => p.id === id)?.category;
-
-  const labeled = rows.filter((r) => r.expectedId && r.done);
-  const top1 = labeled.filter((r) => r.matches?.[0]?.category === catOf(r.expectedId)).length;
-  const top3 = labeled.filter((r) =>
-    r.matches?.slice(0, 3).some((p) => p.category === catOf(r.expectedId))
-  ).length;
-  const prodTop3 = labeled.filter((r) =>
-    r.matches?.slice(0, 3).some((p) => p.id === r.expectedId)
-  ).length;
-  const pct = (n: number) => (labeled.length ? Math.round((n / labeled.length) * 100) : 0);
-
   const readyToRun = rows.length > 0 && rows.some((r) => r.expectedId);
+  const overallPct = bench ? Math.round(bench.overall * 100) : 0;
 
   return (
     <DashboardContent>
       <Typography variant="h4" sx={{ mb: 1 }}>
-        AI Visual Search — Accuracy Test
+        AI Visual Search — Accuracy
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        Add sample product photos, tell the tool which product each one shows, then run the test. It
-        runs the real MobileNet visual search and reports how often the correct category is surfaced
-        (top-1 and top-3) — use these figures for the study&apos;s accuracy results.
+        The visual search uses transfer learning: a KNN classifier trained on MobileNet embeddings of
+        a per-category photo set. The benchmark below measures <b>real top-1 category accuracy</b> on a
+        held-out test set (photos the model never trained on).
       </Typography>
 
-      <Stack direction="row" spacing={1.5} sx={{ mb: 3 }}>
-        <Button variant="outlined" component="label" startIcon={<Iconify icon="solar:gallery-add-bold" />}>
-          Add photos
-          <input hidden multiple type="file" accept="image/*" onChange={(e) => addFiles(e.target.files)} />
-        </Button>
-        <Button
-          variant="contained"
-          disabled={!readyToRun || running}
-          startIcon={<Iconify icon="solar:play-bold" />}
-          onClick={run}
-        >
-          {running ? 'Running…' : 'Run accuracy test'}
-        </Button>
-      </Stack>
-
-      {trainedCount != null && (
-        <Typography variant="body2" sx={{ mb: 2, color: 'success.darker' }}>
-          ✓ Model transfer-trained on {trainedCount} catalog photo
-          {trainedCount === 1 ? '' : 's'} (MobileNet embeddings + KNN).
-        </Typography>
-      )}
-
-      {running && <LinearProgress sx={{ mb: 2 }} />}
-
-      {labeled.length > 0 && (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 2,
-            mb: 3,
-            gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
-          }}
-        >
-          <Metric label="Images tested" value={`${labeled.length}`} />
-          <Metric label="Top-1 category accuracy" value={`${pct(top1)}%`} color="primary.main" />
-          <Metric label="Top-3 category accuracy" value={`${pct(top3)}%`} color="success.main" />
-          <Metric label="Exact product in top-3" value={`${pct(prodTop3)}%`} />
+      {/* Benchmark */}
+      <Card sx={{ p: 3, mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography variant="subtitle1">Benchmark (held-out test set)</Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              Trains the model, then tests it on unseen photos and reports accuracy per category.
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            disabled={benching}
+            startIcon={<Iconify icon="solar:test-tube-bold" />}
+            onClick={runBenchmark}
+          >
+            {benching ? 'Running…' : 'Run benchmark'}
+          </Button>
         </Box>
-      )}
 
+        {benching && <LinearProgress sx={{ mt: 2 }} />}
+
+        {bench && (
+          <Box sx={{ mt: 3 }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gap: 2,
+                mb: 3,
+                gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(3, 1fr)' },
+              }}
+            >
+              <Metric
+                label="Overall top-1 accuracy"
+                value={`${overallPct}%`}
+                color={overallPct >= 80 ? 'success.main' : overallPct >= 60 ? 'warning.main' : 'error.main'}
+              />
+              <Metric label="Held-out test photos" value={`${bench.correct}/${bench.total}`} />
+              <Metric label="Training photos learned" value={`${trainedCount ?? 0}`} />
+            </Box>
+
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Category (dimension)</TableCell>
+                    <TableCell align="center">Correct / Total</TableCell>
+                    <TableCell align="right">Accuracy</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {bench.perCategory.map((c) => {
+                    const p = c.total ? Math.round((c.correct / c.total) * 100) : 0;
+                    return (
+                      <TableRow key={c.label}>
+                        <TableCell>{c.label}</TableCell>
+                        <TableCell align="center">
+                          {c.correct} / {c.total}
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>
+                          {p}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        )}
+      </Card>
+
+      {/* Manual try-your-own-photo */}
       <Card>
-        <CardHeader title="Test images" subheader={rows.length ? undefined : 'No photos added yet.'} />
-        <Scrollbar>
-          <TableContainer sx={{ mt: 1 }}>
-            <Table sx={{ minWidth: 760 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Photo</TableCell>
-                  <TableCell>Expected product</TableCell>
-                  <TableCell>AI label (MobileNet)</TableCell>
-                  <TableCell>Top matches</TableCell>
-                  <TableCell align="center">Result</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row) => {
-                  const ok = !!row.done && row.matches?.[0]?.category === catOf(row.expectedId);
-                  const ok3 =
-                    !!row.done &&
-                    !!row.matches?.slice(0, 3).some((p) => p.category === catOf(row.expectedId));
-                  return (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <Avatar variant="rounded" src={row.url} sx={{ width: 56, height: 56 }} />
-                      </TableCell>
-                      <TableCell sx={{ minWidth: 200 }}>
-                        <Select
-                          size="small"
-                          fullWidth
-                          displayEmpty
-                          value={row.expectedId}
-                          onChange={(e) => setExpected(row.id, e.target.value)}
-                        >
-                          <MenuItem value="">
-                            <em>Choose…</em>
-                          </MenuItem>
-                          {products.map((p) => (
-                            <MenuItem key={p.id} value={p.id}>
-                              {p.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{row.topLabel ?? '—'}</TableCell>
-                      <TableCell sx={{ maxWidth: 280, color: 'text.secondary' }}>
-                        {row.matches?.length
-                          ? row.matches.slice(0, 3).map((p) => p.name).join(', ')
-                          : row.done
-                            ? 'No match'
-                            : '—'}
-                      </TableCell>
-                      <TableCell align="center">
-                        {!row.done || !row.expectedId ? (
-                          '—'
-                        ) : ok ? (
-                          <Iconify icon="solar:check-circle-bold" sx={{ color: 'success.main' }} />
-                        ) : ok3 ? (
-                          <Iconify icon="solar:minus-circle-bold" sx={{ color: 'warning.main' }} />
-                        ) : (
-                          <Iconify icon="solar:close-circle-bold" sx={{ color: 'error.main' }} />
-                        )}
+        <CardHeader
+          title="Try your own photos"
+          subheader="Upload photos, mark the expected product, and run the model on them."
+        />
+        <Box sx={{ p: 3 }}>
+          <Stack direction="row" spacing={1.5} sx={{ mb: 2 }}>
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<Iconify icon="solar:gallery-add-bold" />}
+            >
+              Add photos
+              <input
+                hidden
+                multiple
+                type="file"
+                accept="image/*"
+                onChange={(e) => addFiles(e.target.files)}
+              />
+            </Button>
+            <Button
+              variant="contained"
+              disabled={!readyToRun || running}
+              startIcon={<Iconify icon="solar:play-bold" />}
+              onClick={run}
+            >
+              {running ? 'Running…' : 'Run on my photos'}
+            </Button>
+          </Stack>
+
+          {running && <LinearProgress sx={{ mb: 2 }} />}
+
+          <Scrollbar>
+            <TableContainer>
+              <Table sx={{ minWidth: 720 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Photo</TableCell>
+                    <TableCell>Expected product</TableCell>
+                    <TableCell>AI label</TableCell>
+                    <TableCell>Matched category</TableCell>
+                    <TableCell align="center">Result</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} sx={{ color: 'text.disabled' }}>
+                        No photos added yet.
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Scrollbar>
+                  ) : (
+                    rows.map((row) => {
+                      const ok = !!row.done && row.matches?.[0]?.category === catOf(row.expectedId);
+                      return (
+                        <TableRow key={row.id}>
+                          <TableCell>
+                            <Avatar variant="rounded" src={row.url} sx={{ width: 56, height: 56 }} />
+                          </TableCell>
+                          <TableCell sx={{ minWidth: 200 }}>
+                            <Select
+                              size="small"
+                              fullWidth
+                              displayEmpty
+                              value={row.expectedId}
+                              onChange={(e) => setExpected(row.id, e.target.value)}
+                            >
+                              <MenuItem value="">
+                                <em>Choose…</em>
+                              </MenuItem>
+                              {products.map((p) => (
+                                <MenuItem key={p.id} value={p.id}>
+                                  {p.name}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </TableCell>
+                          <TableCell sx={{ color: 'text.secondary' }}>{row.topLabel ?? '—'}</TableCell>
+                          <TableCell sx={{ color: 'text.secondary' }}>
+                            {row.matches?.length ? row.matches[0].category : row.done ? 'No match' : '—'}
+                          </TableCell>
+                          <TableCell align="center">
+                            {!row.done || !row.expectedId ? (
+                              '—'
+                            ) : ok ? (
+                              <Iconify icon="solar:check-circle-bold" sx={{ color: 'success.main' }} />
+                            ) : (
+                              <Iconify icon="solar:close-circle-bold" sx={{ color: 'error.main' }} />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Scrollbar>
+        </Box>
       </Card>
 
       <Alert severity="info" sx={{ mt: 2 }}>
-        Result key: ✓ correct category is the top match · ◐ correct category within top-3 · ✗ missed.
-        For a meaningful percentage, test 10–20 photos spread across the categories.
+        The benchmark is the figure to cite for accuracy. Add more training photos per category (in
+        the dataset) to raise it; the held-out test set keeps the measure honest.
       </Alert>
     </DashboardContent>
   );
@@ -257,7 +321,7 @@ export function AiAccuracyView() {
 
 function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <Card sx={{ p: 2.5 }}>
+    <Card sx={{ p: 2.5, bgcolor: 'background.neutral' }}>
       <Typography variant="h3" sx={{ color: color ?? 'text.primary' }}>
         {value}
       </Typography>

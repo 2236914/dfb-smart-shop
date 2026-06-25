@@ -115,14 +115,23 @@ export async function classifyImage(image: HTMLImageElement): Promise<Prediction
 }
 
 // ----------------------------------------------------------------------
-// Transfer learning (Objective 2). Rather than relying only on generic ImageNet
-// labels, we train a K-Nearest-Neighbour classifier on MobileNet embeddings of
-// the shop's OWN product photos — so the model recognises the actual catalog.
-// Fully open source (@tensorflow-models/knn-classifier) and runs in the browser.
+// Transfer learning (Objective 2). We train a K-Nearest-Neighbour classifier on
+// MobileNet embeddings of a curated photo set per product CATEGORY (Glass,
+// Aluminum Profiles, Hardware & Accessories, Screens). The model then predicts
+// the category of an uploaded photo and returns the matching products.
+// Fully open source (@tensorflow-models/knn-classifier), runs in the browser.
+// Accuracy is measured on a held-out test set — see benchmarkModel().
 // ----------------------------------------------------------------------
+
+type Dataset = {
+  categories: Record<string, string>; // slug -> category name
+  train: Record<string, string[]>; // slug -> image paths
+  test: Record<string, string[]>;
+};
 
 let knn: KNNClassifier | null = null;
 let knnExamples = 0;
+let datasetCache: Dataset | null = null;
 
 function loadImageEl(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -134,27 +143,36 @@ function loadImageEl(url: string): Promise<HTMLImageElement> {
   });
 }
 
+async function loadDataset(): Promise<Dataset> {
+  if (!datasetCache) {
+    const res = await fetch('/assets/ai/dataset.json');
+    datasetCache = (await res.json()) as Dataset;
+  }
+  return datasetCache;
+}
+
 /**
- * Train the KNN classifier on each product's catalog photos (label = product id),
- * using MobileNet embeddings. Returns the number of example photos learned.
+ * Train the KNN classifier on the curated dataset (label = category name), using
+ * MobileNet embeddings. Cached for the session. Returns examples learned.
  */
-export async function trainOnProducts(
-  products: { id: string; images: string[] }[]
-): Promise<number> {
+export async function trainCategoryModel(): Promise<number> {
+  if (isKnnTrained()) return knnExamples;
   const model = await loadModel();
   const knnClassifier = await import('@tensorflow-models/knn-classifier');
   const classifier = knnClassifier.create();
+  const dataset = await loadDataset();
   let learned = 0;
-  for (const product of products) {
-    for (const url of product.images ?? []) {
+  for (const [slug, paths] of Object.entries(dataset.train)) {
+    const label = dataset.categories[slug];
+    for (const path of paths) {
       try {
-        const img = await loadImageEl(url);  
+        const img = await loadImageEl(path);  
         const embedding = model.infer(img, true) as Tensor;
-        classifier.addExample(embedding, product.id);
+        classifier.addExample(embedding, label);
         embedding.dispose();
         learned += 1;
       } catch {
-        /* skip an image that fails to load (e.g. CORS) */
+        /* skip an image that fails to load */
       }
     }
   }
@@ -167,22 +185,67 @@ export function isKnnTrained(): boolean {
   return !!knn && knnExamples > 0 && knn.getNumClasses() > 0;
 }
 
+/** Predict the category of a query image (transfer-learned). */
+export async function predictCategory(
+  image: HTMLImageElement
+): Promise<{ label: string; confidence: number } | null> {
+  if (!knn || knn.getNumClasses() === 0) return null;
+  const model = await loadModel();
+  const embedding = model.infer(image, true) as Tensor;
+  const prediction = await knn.predictClass(embedding, Math.min(7, knnExamples));
+  embedding.dispose();
+  return { label: prediction.label, confidence: prediction.confidences[prediction.label] ?? 0 };
+}
+
 /**
- * Rank products by KNN similarity to a query image (transfer-learned matches).
- * Returns [] when the classifier hasn't been trained yet.
+ * Match products to a query image: predict its category, return that category's
+ * products. Returns [] when untrained or no category match.
  */
 export async function matchProductsByImage(
   image: HTMLImageElement,
   products: Product[]
 ): Promise<Product[]> {
-  if (!knn || knn.getNumClasses() === 0) return [];
-  const model = await loadModel();
-  const embedding = model.infer(image, true) as Tensor;
-  const prediction = await knn.predictClass(embedding, Math.min(5, knnExamples));
-  embedding.dispose();
-  return Object.entries(prediction.confidences)
-    .filter(([, confidence]) => confidence > 0)
-    .sort((a, b) => b[1] - a[1])
-    .map(([id]) => products.find((p) => p.id === id))
-    .filter((p): p is Product => Boolean(p));
+  const predicted = await predictCategory(image);
+  if (!predicted) return [];
+  return products.filter((p) => p.category === predicted.label);
+}
+
+export type BenchmarkResult = {
+  overall: number;
+  total: number;
+  correct: number;
+  perCategory: { label: string; correct: number; total: number }[];
+};
+
+/**
+ * Measure real accuracy on the held-out test set (images never used in
+ * training): top-1 category accuracy overall and per category.
+ */
+export async function benchmarkModel(): Promise<BenchmarkResult> {
+  await trainCategoryModel();
+  const dataset = await loadDataset();
+  const perCategory: { label: string; correct: number; total: number }[] = [];
+  let correct = 0;
+  let total = 0;
+  for (const [slug, paths] of Object.entries(dataset.test)) {
+    const label = dataset.categories[slug];
+    let c = 0;
+    let t = 0;
+    for (const path of paths) {
+      try {
+        const img = await loadImageEl(path);  
+        const predicted = await predictCategory(img);  
+        t += 1;
+        total += 1;
+        if (predicted && predicted.label === label) {
+          c += 1;
+          correct += 1;
+        }
+      } catch {
+        /* skip */
+      }
+    }
+    perCategory.push({ label, correct: c, total: t });
+  }
+  return { overall: total ? correct / total : 0, total, correct, perCategory };
 }

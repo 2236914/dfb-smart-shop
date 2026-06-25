@@ -1,0 +1,81 @@
+{
+  "categories": {
+    "glass": "Glass",
+    "aluminum": "Aluminum Profiles",
+    "hardware": "Hardware & Accessories",
+    "screens": "Screens"
+  },
+  "train": {
+    "glass": [
+      "/assets/ai/train/glass/00.webp",
+      "/assets/ai/train/glass/01.webp",
+      "/assets/ai/train/glass/02.webp",
+      "/assets/ai/train/glass/03.webp",
+      "/assets/ai/train/glass/04.webp",
+      "/assets/ai/train/glass/05.webp",
+      "/assets/ai/train/glass/06.webp",
+      "/assets/ai/train/glass/07.webp",
+      "/assets/ai/train/glass/08.webp",
+      "/assets/ai/train/glass/09.webp"
+    ],
+    "aluminum": [
+      "/assets/ai/train/aluminum/00.webp",
+      "/assets/ai/train/aluminum/01.webp",
+      "/assets/ai/train/aluminum/02.webp",
+      "/assets/ai/train/aluminum/03.webp",
+      "/assets/ai/train/aluminum/04.webp",
+      "/assets/ai/train/aluminum/05.webp",
+      "/assets/ai/train/aluminum/06.webp",
+      "/assets/ai/train/aluminum/07.webp",
+      "/assets/ai/train/aluminum/08.webp",
+      "/assets/ai/train/aluminum/09.webp"
+    ],
+    "hardware": [
+      "/assets/ai/train/hardware/00.webp",
+      "/assets/ai/train/hardware/01.webp",
+      "/assets/ai/train/hardware/02.webp",
+      "/assets/ai/train/hardware/03.webp",
+      "/assets/ai/train/hardware/04.webp",
+      "/assets/ai/train/hardware/05.webp",
+      "/assets/ai/train/hardware/06.webp",
+      "/assets/ai/train/hardware/07.webp",
+      "/assets/ai/train/hardware/08.webp",
+      "/assets/ai/train/hardware/09.webp"
+    ],
+    "screens": [
+      "/assets/ai/train/screens/00.webp",
+      "/assets/ai/train/screens/01.webp",
+      "/assets/ai/train/screens/02.webp",
+      "/assets/ai/train/screens/03.webp",
+      "/assets/ai/train/screens/04.webp",
+      "/assets/ai/train/screens/05.webp",
+      "/assets/ai/train/screens/06.webp",
+      "/assets/ai/train/screens/07.webp",
+      "/assets/ai/train/screens/08.webp",
+      "/assets/ai/train/screens/09.webp"
+    ]
+  },
+  "test": {
+    "glass": [
+      "/assets/ai/test/glass/10.webp",
+      "/assets/ai/test/glass/11.webp",
+      "/assets/ai/test/glass/12.webp",
+      "/assets/ai/test/glass/13.webp"
+    ],
+    "aluminum": [
+      "/assets/ai/test/aluminum/10.webp",
+      "/assets/ai/test/aluminum/11.webp",
+      "/assets/ai/test/aluminum/12.webp",
+      "/assets/ai/test/aluminum/13.webp"
+    ],
+    "hardware": [
+      "/assets/ai/test/hardware/10.webp"
+    ],
+    "screens": [
+      "/assets/ai/test/screens/10.webp",
+      "/assets/ai/test/screens/11.webp",
+      "/assets/ai/test/screens/12.webp",
+      "/assets/ai/test/screens/13.webp"
+    ]
+  }
+}

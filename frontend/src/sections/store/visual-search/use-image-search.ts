@@ -6,7 +6,7 @@ import { fetchVisibleProducts } from 'src/services/db';
 import {
   isKnnTrained,
   classifyImage,
-  trainOnProducts,
+  trainCategoryModel,
   matchProductsByImage,
   matchProductsByLabels,
 } from 'src/services/ai';
@@ -39,8 +39,8 @@ export function useImageSearch() {
       await image.decode();
       const products = await fetchVisibleProducts();
 
-      // Transfer-learn on the catalog photos once per session.
-      if (!isKnnTrained()) await trainOnProducts(products);
+      // Transfer-learn the category model once per session.
+      if (!isKnnTrained()) await trainCategoryModel();
 
       const predictions = await classifyImage(image);
       setTopLabel(predictions[0]?.label ?? '');
