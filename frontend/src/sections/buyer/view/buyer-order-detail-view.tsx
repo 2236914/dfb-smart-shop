@@ -384,19 +384,21 @@ export function BuyerOrderDetailView() {
             </Typography>
           </Box>
           {order.confirmedAmount != null && (
-            <BreakdownRow label="Confirmed amount" value={order.confirmedAmount} />
+            <BreakdownRow label="Estimated total" value={order.estTotal} />
           )}
           <Divider sx={{ borderStyle: 'dashed' }} />
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
-              Estimated total
+              {order.confirmedAmount != null ? 'Total to pay' : 'Estimated total'}
             </Typography>
             <Typography variant="h6" sx={{ color: `${accent}.main` }}>
-              {fPeso(order.estTotal)}
+              {fPeso(order.confirmedAmount ?? order.estTotal)}
             </Typography>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Final amount is confirmed by the shop.
+            {order.confirmedAmount != null
+              ? 'Final amount confirmed by the shop.'
+              : 'Final amount is confirmed by the shop.'}
           </Typography>
         </Stack>
       </Section>
