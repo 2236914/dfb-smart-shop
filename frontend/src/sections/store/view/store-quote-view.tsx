@@ -1,11 +1,9 @@
-import type { PriceBreakdown } from 'src/data/pricing';
-
 import { useMemo, useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Grid from '@mui/material/Grid';
-import Alert from '@mui/material/Alert';
+import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import MenuItem from '@mui/material/MenuItem';
@@ -26,9 +24,9 @@ import { Iconify } from 'src/components/iconify';
 import { useCart } from '../cart-context';
 
 // ----------------------------------------------------------------------
-// W-2b. Instant Quote — pick a product, enter a size, get a price in seconds
-// (Objective 3, dynamic pricing). Self-contained version of the product-page
-// calculator so the "Instant Quote" CTA has a dedicated screen.
+// W-2b. Instant Quote — pick a product, enter a size, and the price updates
+// LIVE as you type (Objective 3: the pricing algorithm dynamically updates the
+// total cost based on user-defined dimensions — a real-time price quote).
 // ----------------------------------------------------------------------
 
 export function StoreQuoteView() {
@@ -41,35 +39,20 @@ export function StoreQuoteView() {
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
   const [qty, setQty] = useState('1');
-  const [error, setError] = useState('');
-  const [result, setResult] = useState<PriceBreakdown | null>(null);
 
   const product = products.find((p) => p.id === productId);
   const quantity = Math.max(1, Number(qty) || 1);
 
-  const reset = () => {
-    setResult(null);
-    setError('');
-  };
+  const w = Number(width);
+  const h = Number(height);
+  const dimsValid = !!width && !!height && !Number.isNaN(w) && !Number.isNaN(h) && w > 0 && h > 0;
 
-  const handleCalculate = () => {
-    if (!product) {
-      setError('Please choose a product first.');
-      return;
-    }
-    const w = Number(width);
-    const h = Number(height);
-    if (!width || !height || Number.isNaN(w) || Number.isNaN(h)) {
-      setError('Please enter both width and height as numbers.');
-      return;
-    }
-    if (w <= 0 || h <= 0) {
-      setError('Measurements must be greater than 0.');
-      return;
-    }
-    setError('');
-    setResult(computeUnitPrice({ base: product.basePrice, width: w, height: h }));
-  };
+  // Live price: recomputes on every change to product / width / height — no
+  // "calculate" button, so the quote is genuinely real-time (Objective 3).
+  const result = useMemo(
+    () => (product && dimsValid ? computeUnitPrice({ base: product.basePrice, width: w, height: h }) : null),
+    [product, dimsValid, w, h]
+  );
 
   const handleAddToCart = () => {
     if (!product || !result) return;
@@ -78,8 +61,8 @@ export function StoreQuoteView() {
       name: product.name,
       image: product.images[0] ?? '',
       basePrice: product.basePrice,
-      width: Number(width),
-      height: Number(height),
+      width: w,
+      height: h,
       qty: quantity,
       unitPrice: result.unit,
       source: 'manual',
@@ -91,8 +74,8 @@ export function StoreQuoteView() {
     <Box>
       <Typography variant="h4">Instant Quote</Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-        Choose an item and enter your measurements to get an estimated price in seconds. The shop
-        confirms the final amount.
+        Choose an item and enter your measurements — the estimated price updates instantly as you
+        type. The shop confirms the final amount.
       </Typography>
 
       {loading && <LinearProgress sx={{ mb: 3 }} />}
@@ -106,10 +89,7 @@ export function StoreQuoteView() {
               fullWidth
               label="Product"
               value={productId}
-              onChange={(e) => {
-                setProductId(e.target.value);
-                reset();
-              }}
+              onChange={(e) => setProductId(e.target.value)}
               sx={{ mb: 2.5 }}
               slotProps={{ inputLabel: { shrink: true } }}
             >
@@ -123,25 +103,19 @@ export function StoreQuoteView() {
               ))}
             </TextField>
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 2.5 }}>
+            <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
                 label="Width (inches)"
                 placeholder="e.g., 24"
                 value={width}
-                onChange={(e) => {
-                  setWidth(e.target.value);
-                  reset();
-                }}
+                onChange={(e) => setWidth(e.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
                 label="Height (inches)"
                 placeholder="e.g., 36"
                 value={height}
-                onChange={(e) => {
-                  setHeight(e.target.value);
-                  reset();
-                }}
+                onChange={(e) => setHeight(e.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }}
               />
               <TextField
@@ -154,15 +128,13 @@ export function StoreQuoteView() {
               />
             </Box>
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {error}
-              </Alert>
-            )}
-
-            <Button fullWidth size="large" variant="contained" onClick={handleCalculate}>
-              Calculate Price
-            </Button>
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 2 }}>
+              {!product
+                ? 'Select a product to begin.'
+                : dimsValid
+                  ? 'Your estimate updates automatically on the right.'
+                  : 'Enter a width and height greater than 0 to see the price.'}
+            </Typography>
           </Card>
         </Grid>
 
@@ -189,9 +161,17 @@ export function StoreQuoteView() {
               </Box>
             ) : (
               <>
-                <Typography variant="subtitle1" sx={{ mb: 0.5 }}>
-                  {product?.name}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                  <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
+                    {product?.name}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    color="success"
+                    label="Live estimate"
+                    icon={<Iconify icon="solar:bolt-bold" width={14} />}
+                  />
+                </Box>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 2 }}>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Estimated price:
@@ -204,7 +184,11 @@ export function StoreQuoteView() {
                 <Row label="Frame / perimeter (2 × (W + H) × 2)" value={fPeso(result.perimeter)} />
                 <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
                 <Row label="Per unit" value={fPeso(result.unit)} bold />
-                <Row label={`× ${quantity} unit${quantity > 1 ? 's' : ''}`} value={fPeso(result.unit * quantity)} bold />
+                <Row
+                  label={`× ${quantity} unit${quantity > 1 ? 's' : ''}`}
+                  value={fPeso(result.unit * quantity)}
+                  bold
+                />
 
                 <Typography variant="caption" sx={{ display: 'block', color: 'text.disabled', mt: 1.5 }}>
                   Estimate only — the shop confirms the final amount based on stock and finishing.

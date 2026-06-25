@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography';
 import { RouterLink } from 'src/routes/components';
 
 import { useAsync } from 'src/hooks/use-async';
+import { useRealtimeRefetch } from 'src/hooks/use-realtime';
 
 import { fetchActivePromos, fetchVisibleProducts } from 'src/services/db';
 
@@ -50,10 +51,11 @@ const QUICK_ACTIONS = [
 ];
 
 export function StoreHomeView() {
-  const { data } = useAsync(async () => {
+  const { data, refetch } = useAsync(async () => {
     const [promos, products] = await Promise.all([fetchActivePromos(), fetchVisibleProducts()]);
     return { activeBanner: promos[0], featured: products.slice(0, 4) };
   }, []);
+  useRealtimeRefetch(['promos', 'products'], refetch);
 
   const activeBanner = data?.activeBanner;
   const featured = useMemo(() => data?.featured ?? [], [data]);

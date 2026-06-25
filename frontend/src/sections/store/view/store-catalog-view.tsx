@@ -17,6 +17,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { useAsync } from 'src/hooks/use-async';
+import { useRealtimeRefetch } from 'src/hooks/use-realtime';
 
 import { getStockStatus } from 'src/data/status';
 import { PRODUCT_CATEGORIES } from 'src/data/types';
@@ -34,7 +35,8 @@ export function StoreCatalogView() {
   const [searchParams] = useSearchParams();
   const query = (searchParams.get('q') ?? '').trim().toLowerCase();
 
-  const { data, loading } = useAsync(fetchVisibleProducts, []);
+  const { data, loading, refetch } = useAsync(fetchVisibleProducts, []);
+  useRealtimeRefetch('products', refetch);
   const allProducts = useMemo(() => data ?? [], [data]);
 
   const [categories, setCategories] = useState<ProductCategory[]>([]);

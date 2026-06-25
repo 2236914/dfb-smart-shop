@@ -19,6 +19,7 @@ import TableContainer from '@mui/material/TableContainer';
 import LinearProgress from '@mui/material/LinearProgress';
 
 import { useAsync } from 'src/hooks/use-async';
+import { useRealtimeRefetch } from 'src/hooks/use-realtime';
 
 import { ORDER_STATUS_LABEL } from 'src/data/status';
 import { DashboardContent } from 'src/layouts/dashboard';
@@ -59,6 +60,7 @@ export function OrdersView() {
   const { showToast, toast } = useToast();
 
   const { data, loading, error, refetch } = useAsync(fetchOrders, []);
+  useRealtimeRefetch('orders', refetch);
   const orders = useMemo(() => data ?? [], [data]);
 
   const [tab, setTab] = useState<FilterTab>('all');

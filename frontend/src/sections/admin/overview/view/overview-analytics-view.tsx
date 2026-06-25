@@ -19,6 +19,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import { RouterLink } from 'src/routes/components';
 
 import { useAsync } from 'src/hooks/use-async';
+import { useRealtimeRefetch } from 'src/hooks/use-realtime';
 
 import { fDate } from 'src/utils/format-time';
 
@@ -42,10 +43,11 @@ export function OverviewAnalyticsView() {
   const { profile } = useAuth();
   const ownerName = profile?.full_name?.trim() || 'Owner';
 
-  const { data, loading, error } = useAsync(async () => {
+  const { data, loading, error, refetch } = useAsync(async () => {
     const [products, orders] = await Promise.all([fetchProducts(), fetchOrders()]);
     return { products, orders };
   }, []);
+  useRealtimeRefetch(['orders', 'products'], refetch);
 
   const products = useMemo(() => data?.products ?? [], [data]);
   const orders = useMemo(() => data?.orders ?? [], [data]);
