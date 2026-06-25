@@ -16,7 +16,15 @@
       "/assets/ai/train/glass/06.webp",
       "/assets/ai/train/glass/07.webp",
       "/assets/ai/train/glass/08.webp",
-      "/assets/ai/train/glass/09.webp"
+      "/assets/ai/train/glass/09.webp",
+      "/assets/ai/train/glass/10.webp",
+      "/assets/ai/train/glass/11.webp",
+      "/assets/ai/train/glass/12.webp",
+      "/assets/ai/train/glass/13.webp",
+      "/assets/ai/train/glass/14.webp",
+      "/assets/ai/train/glass/15.webp",
+      "/assets/ai/train/glass/16.webp",
+      "/assets/ai/train/glass/17.webp"
     ],
     "aluminum": [
       "/assets/ai/train/aluminum/00.webp",
@@ -28,7 +36,15 @@
       "/assets/ai/train/aluminum/06.webp",
       "/assets/ai/train/aluminum/07.webp",
       "/assets/ai/train/aluminum/08.webp",
-      "/assets/ai/train/aluminum/09.webp"
+      "/assets/ai/train/aluminum/09.webp",
+      "/assets/ai/train/aluminum/10.webp",
+      "/assets/ai/train/aluminum/11.webp",
+      "/assets/ai/train/aluminum/12.webp",
+      "/assets/ai/train/aluminum/13.webp",
+      "/assets/ai/train/aluminum/14.webp",
+      "/assets/ai/train/aluminum/15.webp",
+      "/assets/ai/train/aluminum/16.webp",
+      "/assets/ai/train/aluminum/17.webp"
     ],
     "hardware": [
       "/assets/ai/train/hardware/00.webp",
@@ -40,7 +56,10 @@
       "/assets/ai/train/hardware/06.webp",
       "/assets/ai/train/hardware/07.webp",
       "/assets/ai/train/hardware/08.webp",
-      "/assets/ai/train/hardware/09.webp"
+      "/assets/ai/train/hardware/09.webp",
+      "/assets/ai/train/hardware/10.webp",
+      "/assets/ai/train/hardware/11.webp",
+      "/assets/ai/train/hardware/12.webp"
     ],
     "screens": [
       "/assets/ai/train/screens/00.webp",
@@ -50,32 +69,35 @@
       "/assets/ai/train/screens/04.webp",
       "/assets/ai/train/screens/05.webp",
       "/assets/ai/train/screens/06.webp",
-      "/assets/ai/train/screens/07.webp",
-      "/assets/ai/train/screens/08.webp",
-      "/assets/ai/train/screens/09.webp"
+      "/assets/ai/train/screens/07.webp"
     ]
   },
   "test": {
     "glass": [
-      "/assets/ai/test/glass/10.webp",
-      "/assets/ai/test/glass/11.webp",
-      "/assets/ai/test/glass/12.webp",
-      "/assets/ai/test/glass/13.webp"
+      "/assets/ai/test/glass/18.webp",
+      "/assets/ai/test/glass/19.webp",
+      "/assets/ai/test/glass/20.webp",
+      "/assets/ai/test/glass/21.webp",
+      "/assets/ai/test/glass/22.webp",
+      "/assets/ai/test/glass/23.webp"
     ],
     "aluminum": [
-      "/assets/ai/test/aluminum/10.webp",
-      "/assets/ai/test/aluminum/11.webp",
-      "/assets/ai/test/aluminum/12.webp",
-      "/assets/ai/test/aluminum/13.webp"
+      "/assets/ai/test/aluminum/18.webp",
+      "/assets/ai/test/aluminum/19.webp",
+      "/assets/ai/test/aluminum/20.webp",
+      "/assets/ai/test/aluminum/21.webp",
+      "/assets/ai/test/aluminum/22.webp",
+      "/assets/ai/test/aluminum/23.webp"
     ],
     "hardware": [
-      "/assets/ai/test/hardware/10.webp"
+      "/assets/ai/test/hardware/13.webp",
+      "/assets/ai/test/hardware/14.webp",
+      "/assets/ai/test/hardware/15.webp",
+      "/assets/ai/test/hardware/16.webp"
     ],
     "screens": [
-      "/assets/ai/test/screens/10.webp",
-      "/assets/ai/test/screens/11.webp",
-      "/assets/ai/test/screens/12.webp",
-      "/assets/ai/test/screens/13.webp"
+      "/assets/ai/test/screens/08.webp",
+      "/assets/ai/test/screens/09.webp"
     ]
   }
 }
