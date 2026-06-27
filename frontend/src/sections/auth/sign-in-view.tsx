@@ -16,7 +16,6 @@ import { RouterLink } from 'src/routes/components';
 import { useAuth } from 'src/auth';
 import { supabase } from 'src/lib/supabase';
 
-import { Logo } from 'src/components/logo';
 import { Iconify } from 'src/components/iconify';
 
 // ----------------------------------------------------------------------
@@ -70,7 +69,6 @@ export function SignInView() {
   return (
     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       <Box sx={{ textAlign: 'center', mb: 4 }}>
-        <Logo sx={{ mx: 'auto', mb: 3 }} />
         <Typography variant="h4">Welcome Back</Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
           Sign in to your account to continue.

@@ -4,7 +4,6 @@ import { lazy, Suspense } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { AuthLayout } from 'src/layouts/auth';
-import { BuyerLayout } from 'src/layouts/buyer';
 
 import { renderFallback } from './shared';
 
@@ -26,25 +25,21 @@ const BuyerRegisterPage = lazy(() => import('src/pages/auth/buyer-register'));
 const BuyerForgotPasswordPage = lazy(() => import('src/pages/auth/buyer-forgot-password'));
 const ResetPasswordPage = lazy(() => import('src/pages/auth/reset-password'));
 
-const adminAuth = (element: React.ReactNode) => (
+// Every auth page shares the same polished layout (logo header + centered
+// card over a textured background).
+const authShell = (element: React.ReactNode) => (
   <AuthLayout>
     <Suspense fallback={renderFallback()}>{element}</Suspense>
   </AuthLayout>
 );
 
-const buyerAuth = (element: React.ReactNode) => (
-  <BuyerLayout hideBottomNav>
-    <Suspense fallback={renderFallback()}>{element}</Suspense>
-  </BuyerLayout>
-);
-
 export const authRoutes: RouteObject[] = [
   // Single source of truth for sign-in.
-  { path: 'login', element: buyerAuth(<SignInPage />) },
-  { path: 'login/register', element: buyerAuth(<BuyerRegisterPage />) },
-  { path: 'login/forgot-password', element: buyerAuth(<BuyerForgotPasswordPage />) },
-  { path: 'login/reset', element: buyerAuth(<ResetPasswordPage />) },
+  { path: 'login', element: authShell(<SignInPage />) },
+  { path: 'login/register', element: authShell(<BuyerRegisterPage />) },
+  { path: 'login/forgot-password', element: authShell(<BuyerForgotPasswordPage />) },
+  { path: 'login/reset', element: authShell(<ResetPasswordPage />) },
   // Legacy admin sign-in URL → unified login.
   { path: 'login/admin', element: <Navigate to="/login" replace /> },
-  { path: 'login/admin/forgot-password', element: adminAuth(<AdminForgotPasswordPage />) },
+  { path: 'login/admin/forgot-password', element: authShell(<AdminForgotPasswordPage />) },
 ];

@@ -88,8 +88,12 @@ export function StoreHomeView() {
               href="/catalog"
               size="large"
               variant="contained"
-              color="inherit"
-              sx={{ color: 'primary.main' }}
+              sx={{
+                bgcolor: 'common.white',
+                color: 'primary.main',
+                fontWeight: 700,
+                '&:hover': { bgcolor: 'grey.200' },
+              }}
             >
               Shop Now
             </Button>

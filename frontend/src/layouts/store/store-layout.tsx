@@ -25,6 +25,7 @@ import { RouterLink } from 'src/routes/components';
 
 import { useAuth } from 'src/auth';
 
+import { Logo } from 'src/components/logo';
 import { Iconify } from 'src/components/iconify';
 import { OfflineNotice } from 'src/components/offline-notice';
 
@@ -68,20 +69,7 @@ export function StoreLayout({ children }: { children: React.ReactNode }) {
   const firstName = profile?.full_name?.trim().split(' ')[0] || (isAdmin ? 'Owner' : 'Account');
   const accountHref = isAdmin ? '/admin' : '/buyer';
 
-  const renderLogo = (
-    <Link
-      component={RouterLink}
-      href="/"
-      color="inherit"
-      underline="none"
-      sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-    >
-      <Iconify icon="solar:shop-2-bold" width={28} sx={{ color: 'primary.main' }} />
-      <Typography variant="h6" sx={{ fontWeight: 700 }}>
-        DFB Smart Shop
-      </Typography>
-    </Link>
-  );
+  const renderLogo = <Logo isSingle={false} />;
 
   const renderActions = (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
